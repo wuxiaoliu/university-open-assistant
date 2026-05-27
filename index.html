@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#1677ff" />
+<title>大学开放助手 · 沙河高教园</title>
+<style>
+  :root {
+    --primary: #1677ff; --bg: #f5f6fa; --card: #fff;
+    --text: #1f2329; --muted: #8a93a0; --border: #ebedf0;
+    --open: #07a35a; --limit: #e8901c; --closed: #d4423c; --unknown: #6b7280;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+    font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  a { color: var(--primary); text-decoration: none; }
+
+  header { background: var(--primary); color: #fff;
+    padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
+    position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .subtitle { font-size: 12px; opacity: .85; margin-top: 2px; display: flex; justify-content: space-between; }
+
+  .container { padding: 12px 14px 32px; max-width: 720px; margin: 0 auto; }
+
+  .search { display: flex; align-items: center; background: #fff;
+    border-radius: 10px; padding: 8px 12px; margin-bottom: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+  .search input { flex: 1; border: 0; outline: none; font-size: 15px; background: transparent; }
+  .search .clear { color: var(--muted); padding: 4px 8px; cursor: pointer; display: none; }
+  .search.has-text .clear { display: inline; }
+
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chip { padding: 6px 14px; background: #fff; border: 1px solid var(--border);
+    border-radius: 999px; font-size: 13px; color: #4b5563; cursor: pointer; user-select: none; }
+  .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .count { margin-left: auto; font-size: 12px; color: var(--muted); align-self: center; }
+
+  .card { background: var(--card); border-radius: 12px; padding: 14px;
+    margin-bottom: 10px; box-shadow: 0 1px 6px rgba(0,0,0,.04); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .name { font-size: 16px; font-weight: 600; }
+  .full-name { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .meta { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .open-time { font-size: 13px; margin-top: 8px; color: #374151; }
+
+  .tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+  .tag-open { background: #e6f7ec; color: var(--open); }
+  .tag-limit { background: #fff5e6; color: var(--limit); }
+  .tag-closed { background: #fdecec; color: var(--closed); }
+  .tag-unknown { background: #eef0f3; color: var(--unknown); }
+
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .btn { flex: 1; min-width: 0; text-align: center; padding: 8px 0;
+    font-size: 13px; border-radius: 8px; border: 1px solid var(--border);
+    background: #fff; color: #374151; }
+  .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  .expand { margin-top: 10px; display: none; font-size: 13px; color: #4b5563; }
+  .card.open .expand { display: block; }
+  .expand-row { padding: 6px 0; border-top: 1px dashed var(--border); }
+  .expand-row:first-child { border-top: 0; }
+  .label { color: var(--muted); margin-right: 6px; }
+
+  .news-block { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+  .news-title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .news-item { display: block; font-size: 13px; padding: 6px 0;
+    color: #1f2329; line-height: 1.4; border-top: 1px solid #f4f5f7; }
+  .news-item:first-child { border-top: 0; }
+  .news-item .news-date { font-size: 11px; color: var(--muted); margin-left: 6px; }
+
+  .empty { text-align: center; padding: 60px 0; color: var(--muted); }
+  .loading { text-align: center; padding: 40px 0; color: var(--muted); }
+  footer { text-align: center; padding: 18px 0; color: var(--muted); font-size: 12px; }
+  footer a { color: var(--muted); text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>大学开放助手</h1>
+  <div class="subtitle">
+    <span>沙河高教园 · 校园参观信息查询</span>
+    <span id="lastFetched"></span>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="search" id="searchBox">
+    <span style="color:var(--muted);margin-right:6px;">🔍</span>
+    <input id="kw" type="search" placeholder="搜索学校，如 北航、师大" autocomplete="off" />
+    <span class="clear" id="clearBtn">清除</span>
+  </div>
+
+  <div class="filters" id="filters">
+    <span class="chip active" data-f="all">全部</span>
+    <span class="chip" data-f="open">开放</span>
+    <span class="chip" data-f="limit">需预约</span>
+    <span class="chip" data-f="closed">未开放</span>
+    <span class="chip" data-f="unknown">待核实</span>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div id="loading" class="loading">加载中...</div>
+  <div id="list"></div>
+  <div class="empty" id="empty" style="display:none;">没有匹配的学校，换个关键词试试</div>
+
+  <footer>
+    数据为人工汇总 + 自动抓取，<strong>请以学校官方公告为准</strong><br/>
+    <a href="javascript:void(0)" onclick="alert('数据维护：\\n1. 编辑 schools.json 修改基础信息\\n2. 运行 python3 fetch_news.py 抓取最新文章\\n3. 或交给 GitHub Actions 每日自动运行')">数据维护说明</a>
+  </footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const list = $('#list'), kw = $('#kw'), searchBox = $('#searchBox');
+const clearBtn = $('#clearBtn'), empty = $('#empty');
+const countEl = $('#count'), filters = $('#filters');
+const loadingEl = $('#loading'), lastFetchedEl = $('#lastFetched');
+
+let schools = [];
+let articles = {};
+let state = { keyword: '', filter: 'all' };
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function render() {
+  const k = state.keyword.trim().toLowerCase();
+  const data = schools.filter(s => {
+    const mk = !k || s.name.toLowerCase().includes(k) || s.short.toLowerCase().includes(k) || (s.id && s.id.includes(k));
+    const mf = state.filter === 'all' || s.status === state.filter;
+    return mk && mf;
+  });
+
+  countEl.textContent = `共 ${data.length} 所`;
+
+  if (data.length === 0) {
+    list.innerHTML = ''; empty.style.display = 'block'; return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = data.map(s => {
+    const news = articles[s.id] || [];
+    const newsHtml = news.length ? `
+      <div class="news-block">
+        <div class="news-title">📰 最新公众号文章</div>
+        ${news.slice(0,5).map(n => `
+          <a class="news-item" href="${escapeHtml(n.url)}" target="_blank" rel="noopener">
+            ${escapeHtml(n.title)}
+            ${n.date ? `<span class="news-date">${escapeHtml(n.date)}</span>` : ''}
+          </a>
+        `).join('')}
+      </div>` : '';
+
+    return `
+    <div class="card" data-id="${s.id}">
+      <div class="row" onclick="toggleCard('${s.id}')">
+        <div>
+          <div class="name">${escapeHtml(s.short)}</div>
+          <div class="full-name">${escapeHtml(s.name)}</div>
+        </div>
+        <span class="tag tag-${s.status}">${escapeHtml(s.statusText)}</span>
+      </div>
+      <div class="meta">${escapeHtml(s.distance || '')}</div>
+      <div class="open-time">🕐 ${escapeHtml(s.openTime)}</div>
+
+      <div class="expand">
+        <div class="expand-row"><span class="label">预约方式：</span>${escapeHtml(s.booking)}</div>
+        <div class="expand-row"><span class="label">入校要求：</span>${escapeHtml(s.requirement)}</div>
+        ${s.highlight && s.highlight !== '—' ? `<div class="expand-row"><span class="label">参观亮点：</span>${escapeHtml(s.highlight)}</div>` : ''}
+        <div class="expand-row"><span class="label">地址：</span>${escapeHtml(s.address)}</div>
+      </div>
+
+      ${newsHtml}
+
+      <div class="actions">
+        <a class="btn btn-primary" href="https://weixin.sogou.com/weixin?type=2&query=${encodeURIComponent(s.search_query || s.short + ' 开放')}" target="_blank" rel="noopener">微信搜一搜</a>
+        <a class="btn" href="${escapeHtml(s.site)}" target="_blank" rel="noopener">官网</a>
+        <a class="btn" href="tel:${escapeHtml(s.phone)}">📞 电话</a>
+        <a class="btn" href="https://uri.amap.com/marker?name=${encodeURIComponent(s.short)}&callnative=1" target="_blank" rel="noopener">地图</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleCard(id) {
+  const card = list.querySelector(`.card[data-id="${id}"]`);
+  if (card) card.classList.toggle('open');
+}
+window.toggleCard = toggleCard;
+
+kw.addEventListener('input', (e) => {
+  state.keyword = e.target.value;
+  searchBox.classList.toggle('has-text', !!state.keyword);
+  render();
+});
+clearBtn.addEventListener('click', () => {
+  kw.value = ''; state.keyword = '';
+  searchBox.classList.remove('has-text');
+  kw.focus(); render();
+});
+filters.addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  filters.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  state.filter = chip.dataset.f;
+  render();
+});
+
+// 加载数据
+async function loadAll() {
+  try {
+    const [s, a] = await Promise.all([
+      fetch('./schools.json?t=' + Date.now()).then(r => r.json()),
+      fetch('./articles.json?t=' + Date.now()).then(r => r.json()).catch(() => ({ items: {}, lastFetched: '' }))
+    ]);
+    schools = s;
+    articles = a.items || {};
+    if (a.lastFetched) lastFetchedEl.textContent = '更新 ' + a.lastFetched;
+    loadingEl.style.display = 'none';
+    render();
+  } catch (e) {
+    loadingEl.innerHTML = '加载失败：请通过 HTTP 服务打开（直接双击 file:// 无法读取 JSON）<br/>运行：<code>python3 -m http.server 8000</code>';
+  }
+}
+loadAll();
+</script>
+</body>
+</html>
